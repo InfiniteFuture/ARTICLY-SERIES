@@ -12,27 +12,36 @@ export async function generateSeriesContent(
   const model = "gemini-3-flash-preview";
   
   const systemInstruction = `
-    你是一位顶尖的视觉叙事专家。你的任务是将用户的输入拆解为一个“三部曲”系列的视觉海报（起始、展开、终章）。
-    输出必须是 JSON 格式。
+    你是一位顶尖的视觉叙事专家。你的任务是将用户输入拆解为一组“三部曲”叙事海报。
+    输出必须是严格的 JSON 格式。
     
-    逻辑要求：
-    1. 分解叙事：将内容逻辑地分为三个阶段。
-    2. 布局多样化：为每张卡片从以下布局中选择最合适的：hero (大标题优先), story (正文优先), split (图文对比), quote (金句优先)。
-    3. 内容：使用中文。标题要简短有力，正文要富有文学感。
-    4. 颜色：提供一个适合该主题的十六进制主题色 (themeColor)。
+    核心内容准则：
+    1. 叙事节奏：[01 起始 - 建立意境], [02 展开 - 叙述核心], [03 终章 - 升华感悟]。
+    2. 标题约束：title 必须是单行文本，严禁包含任何换行符 (\\n) 或回车。标题要简短、有力、具备冲击力。
+    3. 视觉感知：
+       - 根据风格(${style})生成英文 imagePrompt。
+       - 必须包含：Cinematic photography, minimalism, intentional negative space for typography.
+       - 预测 isDarkBackground：如果你预期的背景偏暗，设为 true；偏亮则设为 false。这至关重要，将决定文字的对比度排版。
+    4. 主题色：提供一个与内容情感契合的十六进制 themeColor。
     
-    JSON 结构：
+    JSON 结构示例：
     {
       "themeColor": "#xxxxxx",
       "cards": [
-        { "title": "...", "subtitle": "...", "body": ["...", "..."], "layout": "hero", "imagePrompt": "...", "accentText": "..." },
-        { "title": "...", "subtitle": "...", "body": ["...", "..."], "layout": "story", "imagePrompt": "...", "accentText": "..." },
-        { "title": "...", "subtitle": "...", "body": ["...", "..."], "layout": "quote", "imagePrompt": "...", "accentText": "..." }
+        { 
+          "title": "单行标题禁止换行", 
+          "subtitle": "副标题可以略长", 
+          "body": ["段落一", "段落二"], 
+          "layout": "hero", 
+          "imagePrompt": "...", 
+          "accentText": "关键词",
+          "isDarkBackground": true 
+        }
       ]
     }
   `;
 
-  const prompt = `输入：${userInput}。风格：${style}。请创作三部曲内容。`;
+  const prompt = `用户内容：${userInput}。选定风格：${style}。请按三部曲逻辑生成，确保标题不换行。`;
   
   const parts: any[] = [{ text: prompt }];
   if (base64Image) {
@@ -61,9 +70,10 @@ export async function generateSeriesContent(
                 body: { type: Type.ARRAY, items: { type: Type.STRING } },
                 layout: { type: Type.STRING, enum: Object.values(LayoutType) },
                 imagePrompt: { type: Type.STRING },
-                accentText: { type: Type.STRING }
+                accentText: { type: Type.STRING },
+                isDarkBackground: { type: Type.BOOLEAN }
               },
-              required: ["title", "subtitle", "body", "layout", "imagePrompt"]
+              required: ["title", "subtitle", "body", "layout", "imagePrompt", "isDarkBackground"]
             }
           }
         },
@@ -80,7 +90,7 @@ export async function generateCardImage(prompt: string): Promise<string> {
   const response = await ai.models.generateContent({
     model,
     contents: {
-      parts: [{ text: `${prompt} -- Cinematic lighting, 4k, artistic, high quality, background photography, no text.` }]
+      parts: [{ text: `${prompt} -- Cinematic lighting, 4k, professional photography, high-end commercial style, clean background, negative space for text.` }]
     },
     config: {
       imageConfig: { aspectRatio: "9:16" }
@@ -90,5 +100,5 @@ export async function generateCardImage(prompt: string): Promise<string> {
   for (const part of response.candidates[0].content.parts) {
     if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
   }
-  throw new Error("图片生成失败");
+  throw new Error("图像生成引擎暂不可用");
 }
