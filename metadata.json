@@ -1,0 +1,7 @@
+{
+  "name": "ArticlyAI - Visual Content Creator",
+  "description": "Transform your text or images into stunning, shareable visual articles and posters with AI. Perfect for social media, blogs, and marketing.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
